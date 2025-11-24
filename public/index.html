@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Wellbeing Index</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#4c7cff',
+                        'secondary-cyan': '#00b7ff',
+                        'dark-bg': '#1a202c',
+                        'glass-bg': 'rgba(255, 255, 255, 0.1)',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        ripple: {
+                            '0%': { transform: 'scale(0)', opacity: '1' },
+                            '100%': { transform: 'scale(4)', opacity: '0' },
+                        }
+                    },
+                    animation: {
+                        float: 'float 6s ease-in-out infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom CSS for particles and glass effect */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a202c 0%, #1e3a8a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .glass-card {
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Ripple effect CSS */
+        .ripple-button {
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0);
+        }
+        .ripple-button:after {
+            content: "";
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            background-image: radial-gradient(circle, #fff 10%, transparent 10.01%);
+            background-repeat: no-repeat;
+            background-position: 50%;
+            transform: scale(10, 10);
+            opacity: 0;
+            transition: transform 0.3s, opacity 1s;
+        }
+        .ripple-button:active:after {
+            transform: scale(0, 0);
+            opacity: 0.3;
+            transition: 0s;
+        }
+        
+        /* Particle Background (Placeholder/Basic effect for demonstration) */
+        .particle {
+            position: absolute;
+            background: rgba(76, 124, 255, 0.5); /* primary-blue */
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite;
+        }
+        #p1 { top: 10%; left: 5%; width: 20px; height: 20px; animation-duration: 12s; }
+        #p2 { top: 60%; right: 15%; width: 15px; height: 15px; animation-duration: 9s; }
+        #p3 { bottom: 20%; left: 30%; width: 25px; height: 25px; animation-duration: 15s; }
+        #p4 { top: 35%; right: 5%; width: 18px; height: 18px; animation-duration: 10s; }
+    </style>
+</head>
+<body>
+
+    <!-- Particle Animations -->
+    <div id="p1" class="particle"></div>
+    <div id="p2" class="particle"></div>
+    <div id="p3" class="particle"></div>
+    <div id="p4" class="particle"></div>
+
+    <div class="container mx-auto p-4 max-w-5xl w-full relative z-10">
+        
+        <!-- Header & Auth -->
+        <header class="flex justify-between items-center mb-8 p-4 glass-card rounded-xl">
+            <h1 class="text-2xl font-bold text-white tracking-wider">Wellbeing Index</h1>
+            <div id="auth-controls" class="flex items-center space-x-3">
+                <span id="user-info" class="text-sm text-gray-300 hidden"></span>
+                <button id="auth-button" class="ripple-button bg-primary-blue hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md">
+                    Login with Google
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Column: Search, Leaderboard, History -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Search Card -->
+                <div class="glass-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold text-white mb-4">Find a City's Wellbeing Score</h2>
+                    <div class="relative">
+                        <input type="text" id="city-search" placeholder="Type city name (e.g., Tokyo)" 
+                               class="w-full p-3 pr-10 bg-gray-700 bg-opacity-30 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-secondary-cyan"
+                               autocomplete="off">
+                        <button id="calculate-button" class="absolute right-0 top-0 h-full px-3 text-secondary-cyan hover:text-white transition duration-200">
+                            <!-- Icon for search/calculate -->
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 21.75 1.5 12l2.25 1.5z" />
+                            </svg>
+                        </button>
+                        <div id="suggestions-box" class="absolute z-20 w-full mt-1 bg-dark-bg border border-gray-600 rounded-lg shadow-xl hidden">
+                            <!-- Suggestions will be injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaderboard Card -->
+                <div class="glass-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold text-white mb-4">Top 5 Liveable Cities</h2>
+                    <ul id="leaderboard-list" class="space-y-2 text-gray-300">
+                        <li class="p-2 bg-primary-blue bg-opacity-20 rounded-lg flex justify-between items-center cursor-pointer hover:bg-opacity-40 transition" data-city="Vienna">
+                            <span>1. Vienna, Austria</span><span class="font-bold">95.2</span>
+                        </li>
+                        <li class="p-2 bg-primary-blue bg-opacity-10 rounded-lg flex justify-between items-center cursor-pointer hover:bg-opacity-40 transition" data-city="Copenhagen">
+                            <span>2. Copenhagen, Denmark</span><span class="font-bold">93.8</span>
+                        </li>
+                        <li class="p-2 bg-primary-blue bg-opacity-10 rounded-lg flex justify-between items-center cursor-pointer hover:bg-opacity-40 transition" data-city="Vancouver">
+                            <span>3. Vancouver, Canada</span><span class="font-bold">92.1</span>
+                        </li>
+                        <li class="p-2 bg-primary-blue bg-opacity-10 rounded-lg flex justify-between items-center cursor-pointer hover:bg-opacity-40 transition" data-city="Sydney">
+                            <span>4. Sydney, Australia</span><span class="font-bold">89.5</span>
+                        </li>
+                        <li class="p-2 bg-primary-blue bg-opacity-10 rounded-lg flex justify-between items-center cursor-pointer hover:bg-opacity-40 transition" data-city="Zurich">
+                            <span>5. Zurich, Switzerland</span><span class="font-bold">88.3</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right Column: Results & History -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Results Card -->
+                <div class="glass-card p-6 rounded-xl shadow-lg min-h-[300px]">
+                    <h2 id="result-city-name" class="text-3xl font-extrabold text-white mb-2">Global Wellbeing Index</h2>
+                    <p class="text-gray-400 mb-4" id="result-country-name">Select a city to calculate its score.</p>
+                    
+                    <!-- Loading/Error State -->
+                    <div id="loading-indicator" class="hidden text-center py-10">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-blue mx-auto"></div>
+                        <p class="mt-4 text-white">Aggregating data and calculating score...</p>
+                    </div>
+
+                    <!-- Score and Chart -->
+                    <div id="results-display" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <!-- Score -->
+                        <div class="md:col-span-1 text-center">
+                            <p class="text-4xl font-light text-secondary-cyan">Total Score</p>
+                            <p id="final-score" class="text-7xl font-black text-white mt-2 mb-4">0.0</p>
+                            <button id="save-record-button" class="ripple-button bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 shadow-md opacity-50 cursor-not-allowed">
+                                Save Record
+                            </button>
+                        </div>
+                        
+                        <!-- Chart -->
+                        <div class="md:col-span-2 h-[200px] w-full">
+                            <canvas id="wellbeingChart"></canvas>
+                            <p class="text-xs text-gray-500 text-center mt-2">Breakdown based on 40% AQ, 30% Weather, 30% Density.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Card -->
+                <div class="glass-card p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold text-white mb-4">My Saved Records (History)</h2>
+                    <div id="history-container" class="overflow-x-auto">
+                        <table class="min-w-full text-white">
+                            <thead>
+                                <tr class="border-b border-gray-600 text-secondary-cyan text-left">
+                                    <th class="py-2 px-4">City/Country</th>
+                                    <th class="py-2 px-4">Score</th>
+                                    <th class="py-2 px-4">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body">
+                                <tr class="text-gray-400">
+                                    <td colspan="3" class="py-2 px-4">Login to view your saved searches.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Messages -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex justify-center items-center hidden">
+        <div class="bg-dark-bg p-6 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700">
+            <h3 id="modal-title" class="text-xl font-bold text-white mb-4"></h3>
+            <p id="modal-message" class="text-gray-300 mb-6"></p>
+            <button id="modal-close-button" class="ripple-button w-full bg-primary-blue hover:bg-blue-600 text-white py-2 rounded-lg">Close</button>
+        </div>
+    </div>
+
+<script>
+    // --- CLIENT-SIDE JAVASCRIPT LOGIC (app.js) ---
+
+    // Global state variables
+    let currentCityData = null; // Stores aggregated data for the currently displayed city
+    let currentAuthUser = null; // Stores user info if logged in
+    let wellbeingChartInstance = null;
+    
+    // IMPORTANT: Define BASE_URL explicitly for reliable network calls in sandbox environment
+    const BASE_URL = 'http://localhost:3000';
+    const CLIENT_API_KEY = 'MySecureAppKey-8gJzX0lYh7tFpQ3mW2n1'; // Shared application secret
+
+    // --- DOM Elements ---
+    const authButton = document.getElementById('auth-button');
+    const userInfoSpan = document.getElementById('user-info');
+    const citySearchInput = document.getElementById('city-search');
+    const calculateButton = document.getElementById('calculate-button');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const resultsDisplay = document.getElementById('results-display');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const resultCityName = document.getElementById('result-city-name');
+    const resultCountryName = document.getElementById('result-country-name');
+    const saveRecordButton = document.getElementById('save-record-button');
+    const historyTableBody = document.getElementById('history-table-body');
+    const leaderboardList = document.getElementById('leaderboard-list');
+
+    // --- Utility Functions ---
+
+    function updateAuthUI() {
+    if (currentAuthUser) {
+        userInfoSpan.textContent = currentAuthUser.email;
+        userInfoSpan.classList.remove('hidden');
+        authButton.textContent = "Logout";
+        saveRecordButton.classList.remove("opacity-50", "cursor-not-allowed");
+        saveRecordButton.disabled = false;
+    } else {
+        userInfoSpan.classList.add('hidden');
+        userInfoSpan.textContent = "";
+        authButton.textContent = "Login with Google";
+        saveRecordButton.classList.add("opacity-50", "cursor-not-allowed");
+        saveRecordButton.disabled = true;
+    }
+}
+
+
+    function showModal(title, message) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-message').textContent = message;
+        document.getElementById('modal').classList.remove('hidden');
+    }
+
+    document.getElementById('modal-close-button').addEventListener('click', () => {
+        document.getElementById('modal').classList.add('hidden');
+    });
+
+    function showLoading(show) {
+        loadingIndicator.classList.toggle('hidden', !show);
+        resultsDisplay.classList.toggle('hidden', show || !currentCityData);
+    }
+
+    // --- Core Score Calculation Logic (As per Proposal) ---
+    
+    function kelvinToCelsius(k) {
+        return k - 273.15;
+    }
+
+    // A. Air Quality Score (40% Weight) - PM2.5 (lower is better)
+    function normalizeAirQuality(pm25) {
+        if (pm25 <= 10) return 100;
+        if (pm25 >= 50) return 0;
+        return 100 - ((pm25 - 10) / 40) * 100;
+    }
+
+    // B. Weather Comfort Score (30% Weight)
+    function normalizeWeather(tempK) {
+        const tempC = kelvinToCelsius(tempK);
+        const IDEAL_TEMP = 21.5; 
+        const MAX_DEVIATION = 30; 
+
+        const deviation = Math.abs(tempC - IDEAL_TEMP);
+        
+        if (deviation === 0) return 100;
+        if (deviation >= MAX_DEVIATION) return 0;
+
+        return Math.max(0, 100 * (1 - Math.pow(deviation / MAX_DEVIATION, 2)));
+    }
+
+    // C. Population Density Score (30% Weight)
+    function normalizePopulation(population) {
+        const MAX_POP = 10000000;
+        const MIN_POP = 500000;
+
+        if (population <= MIN_POP) return 100;
+        if (population >= MAX_POP) return 0;
+
+        const popRange = MAX_POP - MIN_POP;
+        const normalizedPop = population - MIN_POP;
+        return 100 - (normalizedPop / popRange) * 100;
+    }
+
+    function calculateWellbeingScore(data) {
+        const AQScore = normalizeAirQuality(data.airQualityRaw);
+        const WCScore = normalizeWeather(data.temperatureRaw);
+        const PDScore = normalizePopulation(data.population);
+        
+        const totalScore = (AQScore * 0.40) + (WCScore * 0.30) + (PDScore * 0.30);
+
+        return {
+            totalScore: parseFloat(totalScore.toFixed(1)),
+            airQuality: parseFloat((AQScore * 0.40).toFixed(1)),
+            weatherComfort: parseFloat((WCScore * 0.30).toFixed(1)),
+            populationDensity: parseFloat((PDScore * 0.30).toFixed(1)),
+            factors: { AQScore, WCScore, PDScore } 
+        };
+    }
+
+    // --- Visualization ---
+
+    function renderScoreChart(results) {
+        const ctx = document.getElementById('wellbeingChart').getContext('2d');
+        
+        const data = {
+            labels: [
+                `Air Quality (${results.airQuality} pts)`, 
+                `Weather Comfort (${results.weatherComfort} pts)`, 
+                `Population Density (${results.populationDensity} pts)`
+            ],
+            datasets: [{
+                data: [results.airQuality, results.weatherComfort, results.populationDensity],
+                backgroundColor: ['#28a745', '#007bff', '#ffc107'],
+                borderColor: ['#fff', '#fff', '#fff'],
+                borderWidth: 1,
+                hoverOffset: 10
+            }]
+        };
+        
+        if (wellbeingChartInstance) {
+            wellbeingChartInstance.destroy();
+        }
+        
+        wellbeingChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: 'white' } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed !== null) { label += context.parsed.toFixed(1) + ' pts'; }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Data Fetching and Display ---
+
+    async function fetchAndCalculateScore(city) {
+        showLoading(true);
+        currentCityData = null;
+        saveRecordButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+        try {
+            // FIX: Using absolute URL for network stability
+            const apiUrl = `${BASE_URL}/api/calculate-score?city=${encodeURIComponent(city)}`;
+            
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                 // Throwing an error if the HTTP status is bad (e.g., 500)
+                const errorData = await response.json().catch(() => ({ message: `HTTP Error ${response.status}` }));
+                throw new Error(errorData.message || `Failed to fetch data for ${city}`);
+            }
+
+            const data = await response.json();
+            
+            // Step 2: Calculate final score and breakdown on the client-side
+            const calculatedResults = calculateWellbeingScore(data);
+            
+            currentCityData = { ...data, ...calculatedResults };
+            
+            // Step 3: Update UI
+            resultCityName.textContent = currentCityData.city;
+            resultCountryName.textContent = currentCityData.country;
+            finalScoreDisplay.textContent = currentCityData.totalScore.toFixed(1);
+            
+            renderScoreChart(calculatedResults);
+            
+            if (currentAuthUser) {
+                saveRecordButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+
+        } catch (error) {
+            console.error('Score calculation error:', error);
+            showModal('Calculation Error', error.message || 'Could not calculate score due to data error.');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // --- Authentication & Record Management ---
+
+    function updateAuthUI(user) {
+        if (user && user.displayName) {
+            currentAuthUser = user;
+            authButton.textContent = 'Logout';
+            // FIX: Use absolute URL for logout
+            authButton.onclick = () => window.location.href = `${BASE_URL}/auth/logout`;
+            userInfoSpan.textContent = `Welcome, ${user.displayName}`;
+            userInfoSpan.classList.remove('hidden');
+
+            if (currentCityData) {
+                saveRecordButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            // CRITICAL FIX: Only fetch records if authenticated
+            fetchUserRecords(); 
+
+        } else {
+            currentAuthUser = null;
+            authButton.textContent = 'Login with Google';
+            // FIX: Use absolute URL for login
+            authButton.onclick = () => window.location.href = `${BASE_URL}/auth/google`;
+            userInfoSpan.classList.add('hidden');
+            saveRecordButton.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            historyTableBody.innerHTML = `<tr class="text-gray-400"><td colspan="3" class="py-2 px-4">Login to view your saved searches.</td></tr>`;
+        }
+    }
+
+    // Checks current login status
+    async function checkAuthStatus() {
+        try {
+            // FIX: Use absolute URL and include credentials for session cookie
+            const response = await fetch(`${BASE_URL}/api/user`, { credentials: 'include' }); 
+            if (response.ok) {
+                const user = await response.json();
+                updateAuthUI(user);
+            } else {
+                 updateAuthUI(null);
+            }
+        } catch (error) {
+            // Likely a network/connection error, assume logged out
+             updateAuthUI(null);
+        }
+    }
+
+    async function fetchUserRecords() {
+        if (!currentAuthUser) {
+             // Should not happen if called correctly, but good fail-safe
+             historyTableBody.innerHTML = `<tr class="text-gray-400"><td colspan="3" class="py-2 px-4">Login to view your saved searches.</td></tr>`;
+             return;
+        }
+        
+        try {
+            // FIX: Use absolute URL and include credentials for session cookie
+            const response = await fetch(`${BASE_URL}/records`, {
+                method: 'GET',
+                headers: {
+                    'x-app-api-key': CLIENT_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                // If 401, the session might have expired; log and clear UI
+                if (response.status === 401) {
+                    console.warn("Session expired or unauthorized for /records.");
+                    updateAuthUI(null);
+                    return;
+                }
+                throw new Error('Failed to fetch records.');
+            }
+
+            const records = await response.json();
+            historyTableBody.innerHTML = ''; 
+
+            if (records.length === 0) {
+                historyTableBody.innerHTML = `<tr class="text-gray-400"><td colspan="3" class="py-2 px-4">No records saved yet.</td></tr>`;
+                return;
+            }
+
+            records.forEach(record => {
+                const date = new Date(record.dateSaved).toLocaleDateString();
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-700 hover:bg-gray-800 transition';
+                row.innerHTML = `
+                    <td class="py-2 px-4">${record.city}, ${record.country}</td>
+                    <td class="py-2 px-4 font-bold text-secondary-cyan">${record.totalScore.toFixed(1)}</td>
+                    <td class="py-2 px-4 text-sm">${date}</td>
+                `;
+                historyTableBody.appendChild(row);
+            });
+            
+        } catch (error) {
+            console.error('Record fetch error:', error);
+            showModal('History Error', error.message);
+        }
+    }
+
+    async function saveCurrentRecord() {
+        if (!currentAuthUser || !currentCityData) {
+            showModal('Authorization Required', 'Please log in and calculate a score before saving.');
+            return;
+        }
+
+        try {
+            // FIX: Use absolute URL and include credentials for session cookie
+            const response = await fetch(`${BASE_URL}/saveData`, {
+                method: 'POST',
+                headers: {
+                    'x-app-api-key': CLIENT_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    city: currentCityData.city,
+                    country: currentCityData.country,
+                    totalScore: currentCityData.totalScore,
+                    wellbeingFactors: {
+                        populationDensity: currentCityData.populationDensity,
+                        airQuality: currentCityData.airQuality,
+                        weatherComfort: currentCityData.weatherComfort,
+                    }
+                })
+            });
+
+            if (response.status === 401) {
+                showModal('Session Expired', 'Please log in again to save records.');
+                updateAuthUI(null);
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.message || 'Server failed to save the record.');
+            }
+
+            showModal('Success!', `Record for ${currentCityData.city} saved to your history.`);
+            fetchUserRecords();
+
+        } catch (error) {
+            console.error('Save error:', error);
+            showModal('Save Failed', error.message);
+        }
+    }
+
+    // --- Event Listeners and Initial Load ---
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Initial check for authentication status and fetch default score
+        checkAuthStatus(); 
+
+        // Set up event listeners
+        calculateButton.addEventListener('click', () => {
+            const city = citySearchInput.value.trim();
+            if (city) fetchAndCalculateScore(city);
+        });
+
+        saveRecordButton.addEventListener('click', saveCurrentRecord);
+        
+        // Leaderboard click handler
+        leaderboardList.querySelectorAll('li').forEach(item => {
+            item.addEventListener('click', () => {
+                const city = item.getAttribute('data-city');
+                citySearchInput.value = city;
+                fetchAndCalculateScore(city);
+            });
+        });
+        
+        // Initial mock load
+        fetchAndCalculateScore('Sydney'); 
+    });
+</script>
+</body>
+</html>
