@@ -32,7 +32,7 @@ A modern web application that calculates and visualizes a city’s wellbeing sco
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/amaya-wickeamaarachchi/global-wellbeing-index.git
+   git clone https://github.com/amaya-wickramaarachchi/global-wellbeing-index.git
    cd global-wellbeing-index
 
 
