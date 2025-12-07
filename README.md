@@ -126,4 +126,3 @@ This project is open-source under the MIT License.
 
 ---
 
-If you want, I can polish this into a downloadable `README.md` file.
